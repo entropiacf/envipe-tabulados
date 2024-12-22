@@ -1,5 +1,5 @@
 ---
-title: "Total de Víctimas ENVIPE"
+title: "Total de Víctimas ENVIPE (2024)"
 author: "Isaías M - Entropía"
 format: html
 editor: visual
@@ -26,52 +26,50 @@ pacman::p_load( readr,       # Nos  ayuda a leer archivos en formato Excel
 ## 2. Lectura de archivos
 
 > Creamos una variable llamada `df` (dataframe) que contiene los datos de la tabla `TPer_Vic2` 
-que es la que contiene. Al correr la función `head()` nos dará los primeros n
-registros que le pidamos, eso ayuda a visualizar si los datos se cargaron 
-adecuadamente.
+que es la que contiene las variables para estimar la cantidad de hogares y víctimas. 
+Al correr la función `head()` nos dará los primeros n registros que le pidamos, eso ayuda a visualizar si los datos se cargaron adecuadamente.
 
 ```{r}
 
-#df <- read_csv( here('/home/isaias/entropia-codigo/envipe-tabulados/datos/datos-originales/TPer_Vic2.csv') )
 df <- read_csv( here('datos/datos-originales/TPer_Vic2.csv') )
 
 ```
 
 > Mostramos el encabezado de las primeras filas.
 
-```{r, echo=FALSE}
+```{r}
 
-kable(head(df)) 
+kable(head(df , 3), caption = "Encabezado de las tres primeras filas.") 
 
 ```
 
 ## 3. Procesamiento de datos (Generales)
 
 > 3.1. Limpiamos los nombres de las columnas, para poder estandarizar. Y cargamos el conjunto de datos de nuevo en la variable df.
+> Observé que el factor de expansión del hogar viene en como tipo `character` para la base de 2024 por ello lo convierto a entero.
 
 ```{r}
 
 df <- clean_names(df)
 
-# Observé que el factor de expansión del hogar viene en caracter para la base de 2024
-# por ello lo convierto a entero.
+# Modificación del tipo de dato del factor de expansión
 
 df$fac_hog <- as.integer(df$fac_hog)
 
 ```
 
-> Volvemos a mostrar los primeros registros
+> Volvemos a mostrar los primeros registros para ver la modificación de nombre de las columnas.
 
 ```{r, echo=FALSE}
 
-kable(head(df)) 
+kable(head(df , 3), caption = "Encabezado de las tres primeras filas.") 
 
 ```
 
-## 4. Procesamiento de datos (Responder nuestra pregunta)
+## 4. Procesamiento de datos (Para responder nuestra pregunta)
 
-4.1. Podemos filtrar solo las columnas necesarias. Para ello necesitamos tener el diseño muestral estrato y upm: `estrato` `est_dis` `upm_dis` los factores de expansión para la estimación `fac_hog` y `fac_ele`
-4.2. Necesitamos las variables que contienen la pregunta que queremos responder Entonces, filtremos.
+> 4.1. Podemos filtrar solo las columnas necesarias. Para ello necesitamos tener el diseño muestral estrato y upm: `estrato` `est_dis` `upm_dis` los factores de expansión para la estimación `fac_hog` y `fac_ele`
+> 4.2. Necesitamos las variables que contienen la pregunta que queremos responder entonces, filtremos.
 Creamos un vector que tiene el nombre de las variables que necesitamos desl muestreo y auxiliares
 
 ```{r}
@@ -85,7 +83,7 @@ vars <- c('id_viv','id_hog', 'upm', 'cve_ent', # Variables de identificación y 
 ```{r}
 preg <- c('AP6_4_01',  # Sobre el Robo total de vehículo (automóvil, camioneta o camión)
           'AP6_4_02',  # Sobre el  Robo de accesorios, refacciones o  herramientas de vehículos (automóvil, camioneta, camión)
-          #'AP6_4_03', # Sobre la Pinta de barda o grafiti en su casa, *NO* se debe incluir
+          #'AP6_4_03', # Sobre la Pinta de barda o grafiti en su casa, *NO* se debe incluir (con base en la documentación de la encuesta)
           'AP6_4_04' , # Si Alguien entró a su casa o departamento sin permiso mediante el uso de la fuerza y robó o intentó robar algo
           'AP6_7')     # Alguno del grupo B (personales) ) 
 
@@ -141,20 +139,18 @@ hog <- sum(df_vict$fac_hog, na.rm = T)
 
 hog_mx <- hog # Me llevaré este valor para un cálculo más adelante
 
-kable(hog)
-
+print(paste0('Se estiman ' , round(hog/1000000, 2) , ' millones de hogares en México en 2024'))
 
 ```
 
-> ## ¿Cuántos hogares se estima que fueron victimizados en 2022 en Mexico?
+> ## Y bien, de esos Hogares ¿Cuántos se estima que fueron victimizados en 2024 en Mexico?
 
-> -   [ ] Planteamiento: Necesito saber quiénes respondieron que `Sí` les ocurrió durante 2024 alguna conducta de las tarjetas A y B (delitos en hogares o personales) ya sea a alguien de su hogar o a quienes respondieron.
-> -   [ ] Restricciones: En los delitos de Robo de vehículo y Robo parcial de vehículo debemos confirmar que estos pertenecían al hogar.
-> -   [ ] Estrategia de solución:
-> -   Debido esa pregunta se divide en varias columnas en la base de datos como vimos en el filtro, crearé una variable dummy que guarde los resultados de cada pregunta. Solo necesito saber por ahora si respondió `Sí` a alguna.
-> -   En mi caso, decidí crear una función que nos ayude a codificar las variables DRY (don't repeat yourself), esto con la finalidad de crear una nueva variable dummy y así estimar lo que necesitamos.
+> - Planteamiento: Necesito saber quiénes respondieron que `Sí` les ocurrió durante 2024 alguna conducta de las tarjetas A y B (delitos en hogares o personales) ya sea a alguien de su hogar o a quienes respondieron.
+> - Restricciones: En los delitos de Robo de vehículo y Robo parcial de vehículo debemos confirmar que estos pertenecían al hogar.
+> - Debido esa pregunta se divide en varias columnas en la base de datos como vimos en el filtro, crearé una variable dummy que guarde los resultados de cada pregunta. Solo necesito saber por ahora si respondió `Sí` a alguna.
+> - En mi caso, decidí crear una función que nos ayude a codificar las variables DRY (don't repeat yourself), esto con la finalidad de crear una nueva variable dummy y así estimar lo que necesitamos.
 
-> Crear la función
+> Crear la función para recodificar las respuestas de las tarjetas A y B
 
 ```{r}
 recodifica <- function(x) { 
@@ -174,19 +170,20 @@ df_salida <- df_vict |>  # A la base de datos filtrada le aplico los procesamien
            #ap6_4_03_r = recodifica(ap6_4_03), # No debemos incluir las pintas a bardas
            ap6_4_04_r = recodifica(ap6_4_04), 
            ap6_7_r =    recodifica(ap6_7),
-           vic_res = rowSums( dplyr::across(preg) ), # Hago la suma de todas mis variables dummy
+           vic_res = rowSums( dplyr::across(all_of (preg) )), # Hago la suma de todas mis variables dummy
            vic_hog = ifelse(vic_res > 0, 1, 0 ), # Si alguna es mayor a cero, significa que al menos en una respondieron que sí, de otro modo quedan como ceros 
            vic_hog_est = vic_hog * fac_hog) # Podemos probar a estimar con los factores de expansión
 ```
 
-> Veamos qué pasa si sumamos los datos ya ponderados por su factor de expansión.
+> Veamos qué pasa si sumamos los datos ya ponderados por su factor de expansión. 
+> Obtenemos la estimación puntual de Víctimas en Hogares
 
 ```{r}
 hog_vic <- sum(df_salida$vic_hog_est)
 print(hog_vic)
 ```
 
-> A continuación, creamos un objeto de `diseño muestral` para poder realizar cálculos de muestras complejas.
+> ## A continuación, creamos un objeto de `diseño muestral` para poder realizar cálculos de muestras complejas desde la biblioteca `srvyr`
 
 ```{r}
 
@@ -197,8 +194,8 @@ dis_muest <- df_salida |> # A la tabla de la nueva variable le aplicamos las fun
 ```
 
 > Respondamos de una buena vez cuántos hogares fueron vćtimas de algún delito en 2024.
+> Recuerda leer muy bien el documento sobre el diseño muestral para entender mejor tus resultados.
 
-## 
 
 ```{r}
 
@@ -236,7 +233,7 @@ print(prop_hv)
 
 porc_hv <- prop_hv * 100
 
-print(paste0("Durante 2022 al menos un " , round (porc_hv,1), "% de hogares en Méxco tuvieron una víctima de delito." ))
+print(paste0( 'Durante 2024 se estimaron ', round(hog/1000000, 2) ,  ' millones de hogares en México, de los cuales se estima que hubo ', round(hog_vic/1000000, 2) , ' hogares víctima, lo que significa que en un ', round (porc_hv,2), ' % de los hogares al menos una persona integrante fue víctima de un delito.'  ))
 
 ```
 
