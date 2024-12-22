@@ -1,0 +1,249 @@
+---
+title: "Total de Víctimas ENVIPE"
+author: "Isaías M - Entropía"
+format: html
+editor: visual
+---
+
+# 1. Carga de librerías
+
+```{r, echo= TRUE}
+
+if (!require("pacman")) install.packages("pacman") 
+
+pacman::p_load( readr,       # Nos  ayuda a leer archivos en formato Excel
+                #tidyr,       # Permite trabajar con varas funciones para análisis y limpieza
+                dplyr,       # Permite el uso de pipes |> los que conectan funciones
+                janitor,     # Limpieza de columnas 
+                srvyr,       # Análisis de muestras complejas 
+                kableExtra,  # Tablas con estética 
+                stringr,     # Trabajar con cadenas de texto
+                here
+                )
+
+```
+
+## 2. Lectura de archivos
+
+> Creamos una variable llamada `df` (dataframe) que contiene los datos de la tabla `TPer_Vic2` 
+que es la que contiene. Al correr la función `head()` nos dará los primeros n
+registros que le pidamos, eso ayuda a visualizar si los datos se cargaron 
+adecuadamente.
+
+```{r}
+
+#df <- read_csv( here('/home/isaias/entropia-codigo/envipe-tabulados/datos/datos-originales/TPer_Vic2.csv') )
+df <- read_csv( here('datos/datos-originales/TPer_Vic2.csv') )
+
+```
+
+> Mostramos el encabezado de las primeras filas.
+
+```{r, echo=FALSE}
+
+kable(head(df)) 
+
+```
+
+## 3. Procesamiento de datos (Generales)
+
+> 3.1. Limpiamos los nombres de las columnas, para poder estandarizar. Y cargamos el conjunto de datos de nuevo en la variable df.
+
+```{r}
+
+df <- clean_names(df)
+
+# Observé que el factor de expansión del hogar viene en caracter para la base de 2024
+# por ello lo convierto a entero.
+
+df$fac_hog <- as.integer(df$fac_hog)
+
+```
+
+> Volvemos a mostrar los primeros registros
+
+```{r, echo=FALSE}
+
+kable(head(df)) 
+
+```
+
+## 4. Procesamiento de datos (Responder nuestra pregunta)
+
+4.1. Podemos filtrar solo las columnas necesarias. Para ello necesitamos tener el diseño muestral estrato y upm: `estrato` `est_dis` `upm_dis` los factores de expansión para la estimación `fac_hog` y `fac_ele`
+4.2. Necesitamos las variables que contienen la pregunta que queremos responder Entonces, filtremos.
+Creamos un vector que tiene el nombre de las variables que necesitamos desl muestreo y auxiliares
+
+```{r}
+vars <- c('id_viv','id_hog', 'upm', 'cve_ent', # Variables de identificación y geográficas
+          'estrato', 'est_dis', 'fac_hog', 'fac_ele',  # Variables del diseño muestral
+          'ap6_5_01', 'ap6_5_02')   # Variables auxiliares para el filtrado o procesamiento (saber si los bienes perdidos eran del hogar)
+```
+
+> Creamos otro vector que tiene el nombre de las variables que contienen nuestras preguntas. Estos pasos no son estrictamente de esta manera.
+
+```{r}
+preg <- c('AP6_4_01',  # Sobre el Robo total de vehículo (automóvil, camioneta o camión)
+          'AP6_4_02',  # Sobre el  Robo de accesorios, refacciones o  herramientas de vehículos (automóvil, camioneta, camión)
+          #'AP6_4_03', # Sobre la Pinta de barda o grafiti en su casa, *NO* se debe incluir
+          'AP6_4_04' , # Si Alguien entró a su casa o departamento sin permiso mediante el uso de la fuerza y robó o intentó robar algo
+          'AP6_7')     # Alguno del grupo B (personales) ) 
+
+```
+
+> Delitos del grupo B
+
+-   05 Robo o asalto en la calle o en el transporte público (incluye robo en banco o cajero automático)
+-   06 Robo en forma distinta a la anterior
+-   07 Alguien usó su chequera, número de tarjeta o cuenta bancaria sin su permiso para realizar cargos o para extraer dinero de sus cuentas (fraude bancario) o le dio dinero falso
+-   08 Entregó dinero por un producto o un servicio que no recibió conforme a lo acordado (fraude al consumidor)
+-   09 Amenazas, presiones o engaños para exigirle dinero o bienes; o para que hiciera algo o dejara de hacerlo (extorsión)
+-   10 Amenazas verbales de alguien plenamente identificado o por escrito hacia su persona diciendo que le va a causar un daño a usted, a su familia, a sus bienes o su trabajo
+-   11 Alguien sólo por actitud abusiva o por una discusión lo(a) golpeó generándole una lesión física (moretones, fracturas, cortadas, etcétera)
+-   12 Lo secuestraron para exigir dinero o bienes
+-   13 Alguien en contra de su voluntad lo(a) agredió mediante hostigamiento o intimidación sexual, manoseo, exhibicionismo o intento de violación
+-   14 Fue obligado(a) mediante violencia física o amenaza por alguien conocido o desconocido a tener una actividad sexual no deseada (violación sexual)
+-   15 Otros delitos distintos a los anteriores
+
+> Procesamientos NO necesarios, es la forma en la que resolví el ejercicio.
+Tú puedes resolverlo de otra manera :)
+
+```{r}
+
+preg1 <- tolower(preg)     #  Para filtrar deben estar en minúsculas
+vfilt <- c(vars, preg1)    #  Se juntan en un solo vector
+preg <- preg1              #  Utilizo una variable dummy
+preg <- paste0(preg, '_r') #  Genero un nombre dummy para procesamientos
+
+print(preg)
+
+```
+
+> Filtremos el dataframe usando los nombres de variables separados.
+
+```{r}
+
+
+df_vict <- df |> select( all_of(vfilt)) 
+
+```
+
+## Comencemos a preguntarle cosas a la base de datos.
+
+> ## ¿Cuántos hogares se estiman en Mexico?
+
+> Para responder, podemos simplemente sumar los factores de expansión de hogar `fac_hog` y no debemos filtrar ni agregar ya que queremos saber a nivel nacional esta estimación.
+
+
+```{r}
+
+hog <- sum(df_vict$fac_hog, na.rm = T)
+
+hog_mx <- hog # Me llevaré este valor para un cálculo más adelante
+
+kable(hog)
+
+
+```
+
+> ## ¿Cuántos hogares se estima que fueron victimizados en 2022 en Mexico?
+
+> -   [ ] Planteamiento: Necesito saber quiénes respondieron que `Sí` les ocurrió durante 2024 alguna conducta de las tarjetas A y B (delitos en hogares o personales) ya sea a alguien de su hogar o a quienes respondieron.
+> -   [ ] Restricciones: En los delitos de Robo de vehículo y Robo parcial de vehículo debemos confirmar que estos pertenecían al hogar.
+> -   [ ] Estrategia de solución:
+> -   Debido esa pregunta se divide en varias columnas en la base de datos como vimos en el filtro, crearé una variable dummy que guarde los resultados de cada pregunta. Solo necesito saber por ahora si respondió `Sí` a alguna.
+> -   En mi caso, decidí crear una función que nos ayude a codificar las variables DRY (don't repeat yourself), esto con la finalidad de crear una nueva variable dummy y así estimar lo que necesitamos.
+
+> Crear la función
+
+```{r}
+recodifica <- function(x) { 
+  r <-  ifelse(x == 1, 1, 0)
+  return(r)}
+
+```
+
+> Recodificar y crear variables auxiliares
+
+```{r}
+
+df_salida <- df_vict |>  # A la base de datos filtrada le aplico los procesamientos y creamos una nueva variable
+  # Comienzo a generar variables dummy que guarden el resultdo de la respuesta
+  mutate ( ap6_4_01_r = ifelse( ap6_4_01 == 1 & ap6_5_01 == 1,1,0 ),  # En Robo de vehículo debemos confirmar si era del hogar o no.
+           ap6_4_02_r = ifelse( ap6_4_02 == 1 & ap6_5_02 == 1,1,0 ),  # En Robo parcial de vehículo debemos confirmar si era del hogar o no.
+           #ap6_4_03_r = recodifica(ap6_4_03), # No debemos incluir las pintas a bardas
+           ap6_4_04_r = recodifica(ap6_4_04), 
+           ap6_7_r =    recodifica(ap6_7),
+           vic_res = rowSums( dplyr::across(preg) ), # Hago la suma de todas mis variables dummy
+           vic_hog = ifelse(vic_res > 0, 1, 0 ), # Si alguna es mayor a cero, significa que al menos en una respondieron que sí, de otro modo quedan como ceros 
+           vic_hog_est = vic_hog * fac_hog) # Podemos probar a estimar con los factores de expansión
+```
+
+> Veamos qué pasa si sumamos los datos ya ponderados por su factor de expansión.
+
+```{r}
+hog_vic <- sum(df_salida$vic_hog_est)
+print(hog_vic)
+```
+
+> A continuación, creamos un objeto de `diseño muestral` para poder realizar cálculos de muestras complejas.
+
+```{r}
+
+dis_muest <- df_salida |> # A la tabla de la nueva variable le aplicamos las funciones necesarias para crear el objeto de diseño muestral
+  as_survey_design(ids= upm,         # Indicamos cuáles son los identificadores de las Unidades Primarias de Muestreo
+                   strata= est_dis,  # Indicamos el estrato al cuál pertenecen esas UPMs
+                   weights= fac_hog) # Indicamos cuál es la variable que guarda los pesos o factores de expansión
+```
+
+> Respondamos de una buena vez cuántos hogares fueron vćtimas de algún delito en 2024.
+
+## 
+
+```{r}
+
+hog_vict <- dis_muest |>    # A nuestro objeto de diseño muestral le aplicamos funciones que calcularn lo que necesitamos 
+  #group_by() |> # Esta función más adelante la usaremos para agrupar por otras variables, por ahora se queda comentada.
+  
+  # Vamos a realizar un sumario
+  summarise( vic_hogar = survey_total( vic_hog ,     # Utilizamos la variable dummy, que nos indica si fuero víctimas de al menos algún delito.
+                                      vartype = c("cv", "ci"), # Qué quiero que nos regrese además de las estimaciones. Requiero el coeficiente de variación y los intervalos de confianza 
+                                      level=0.9) # Necesito indicarle a qué nivel de confianza se deben crear los intervalos.
+             ) 
+# Me llevo la estimación puntual para luego realizar otros cálculos
+
+hog_vic <- hog_vict$vic_hogar
+
+hog_vict |> kable() # Ponemos guapa a la tabla
+
+```
+
+## Conclusiones
+
+> Sabemos que se estiman 38,560,539 Hogares en México y que de ellos, 10,609,475 tuvieron en 2022 al menos una víctima. Entonces, si hacemos el cálculo:
+
+```{r}
+
+prop_hv <- hog_vic  / hog_mx 
+  
+print(prop_hv)
+
+```
+
+> Recuerda que sí lo multiplicas por 100 tienes un porcentaje, que algunas veces de acuerdo a su forma de cálculo pueden representar algún tipo de indicador epidemiológico.
+
+```{r}
+
+porc_hv <- prop_hv * 100
+
+print(paste0("Durante 2022 al menos un " , round (porc_hv,1), "% de hogares en Méxco tuvieron una víctima de delito." ))
+
+```
+
+
+### En la imagen se pueden contrastar los resultados.
+
+![Diapositiva de la presentación ejecutiva del INEGI](/imagenes-aux/prev-hog.png)
+
+
+
