@@ -5,29 +5,33 @@ format: html
 editor: visual
 ---
 
+# Introducción
+
+La **Encuesta Nacional de Victimización y Percepción sobre Seguridad Pública (ENVIPE)** 2024 es la décima cuarta entrega de la serie estadística generada por el Subsistema Nacional de Información de Gobierno, Seguridad Pública e Impartición de Justicia (SNIGSPIJ), coordinada por el Instituto Nacional de Estadística y Geografía (INEGI). Con este proyecto se da continuidad a las temáticas abordadas en las ediciones anteriores de esta encuesta, cuyos resultados han sido declarados Información de Interés Nacional por la Junta de Gobierno del INEGI. (INEGI, 2024)
+
+Para mayor información y descarga de datos, cuestionarios, etcétera visite el enlace: [ENVIPE](https://www.inegi.org.mx/programas/envipe/2024/)
+
+Puedes ir al repositorio en este enlace: [Tabluados ENVIPE](https://github.com/entropiacf/envipe-tabulados)
+
+
+
 # 1. Carga de librerías
 
 ```{r, echo= TRUE}
 
-if (!require("pacman")) install.packages("pacman") 
 
-pacman::p_load( readr,       # Nos  ayuda a leer archivos en formato Excel
-                #tidyr,       # Permite trabajar con varas funciones para análisis y limpieza
-                dplyr,       # Permite el uso de pipes |> los que conectan funciones
-                janitor,     # Limpieza de columnas 
-                srvyr,       # Análisis de muestras complejas 
-                kableExtra,  # Tablas con estética 
-                stringr,     # Trabajar con cadenas de texto
-                here
-                )
+library(readr)       # Nos  ayuda a leer archivos en formato Excel
+library(dplyr)       # Permite el uso de pipes |> los que conectan funciones
+library(janitor)     # Limpieza de columnas 
+library(srvyr)       # Análisis de muestras complejas 
+library(stringr)     # Trabajar con cadenas de texto
+suppressPackageStartupMessages(library(here))
 
 ```
 
 ## 2. Lectura de archivos
 
-> Creamos una variable llamada `df` (dataframe) que contiene los datos de la tabla `TPer_Vic2` 
-que es la que contiene las variables para estimar la cantidad de hogares y víctimas. 
-Al correr la función `head()` nos dará los primeros n registros que le pidamos, eso ayuda a visualizar si los datos se cargaron adecuadamente.
+> Creamos una variable llamada `df` (dataframe) que contiene los datos de la tabla `TPer_Vic2` que es la que contiene las variables para estimar la cantidad de hogares y víctimas. Al correr la función `head()` nos dará los primeros n registros que le pidamos, eso ayuda a visualizar si los datos se cargaron adecuadamente.
 
 ```{r}
 
@@ -39,14 +43,13 @@ df <- read_csv( here('datos/datos-originales/TPer_Vic2.csv') )
 
 ```{r}
 
-kable(head(df , 3), caption = "Encabezado de las tres primeras filas.") 
+kableExtra::kable(head(df , 3), caption = "Encabezado de las tres primeras filas.") 
 
 ```
 
 ## 3. Procesamiento de datos (Generales)
 
-> 3.1. Limpiamos los nombres de las columnas, para poder estandarizar. Y cargamos el conjunto de datos de nuevo en la variable df.
-> Observé que el factor de expansión del hogar viene en como tipo `character` para la base de 2024 por ello lo convierto a entero.
+> 3.1. Limpiamos los nombres de las columnas, para poder estandarizar. Y cargamos el conjunto de datos de nuevo en la variable df. Observé que el factor de expansión del hogar viene en como tipo `character` para la base de 2024 por ello lo convierto a entero.
 
 ```{r}
 
@@ -62,15 +65,13 @@ df$fac_hog <- as.integer(df$fac_hog)
 
 ```{r, echo=FALSE}
 
-kable(head(df , 3), caption = "Encabezado de las tres primeras filas.") 
+kableExtra::kable(head(df , 3), caption = "Encabezado de las tres primeras filas.") 
 
 ```
 
 ## 4. Procesamiento de datos (Para responder nuestra pregunta)
 
-> 4.1. Podemos filtrar solo las columnas necesarias. Para ello necesitamos tener el diseño muestral estrato y upm: `estrato` `est_dis` `upm_dis` los factores de expansión para la estimación `fac_hog` y `fac_ele`
-> 4.2. Necesitamos las variables que contienen la pregunta que queremos responder entonces, filtremos.
-Creamos un vector que tiene el nombre de las variables que necesitamos desl muestreo y auxiliares
+> 4.1. Podemos filtrar solo las columnas necesarias. Para ello necesitamos tener el diseño muestral estrato y upm: `estrato` `est_dis` `upm_dis` los factores de expansión para la estimación `fac_hog` y `fac_ele` 4.2. Necesitamos las variables que contienen la pregunta que queremos responder entonces, filtremos. Creamos un vector que tiene el nombre de las variables que necesitamos desl muestreo y auxiliares
 
 ```{r}
 vars <- c('id_viv','id_hog', 'upm', 'cve_ent', # Variables de identificación y geográficas
@@ -103,8 +104,7 @@ preg <- c('AP6_4_01',  # Sobre el Robo total de vehículo (automóvil, camioneta
 -   14 Fue obligado(a) mediante violencia física o amenaza por alguien conocido o desconocido a tener una actividad sexual no deseada (violación sexual)
 -   15 Otros delitos distintos a los anteriores
 
-> Procesamientos NO necesarios, es la forma en la que resolví el ejercicio.
-Tú puedes resolverlo de otra manera :)
+> Procesamientos NO necesarios, es la forma en la que resolví el ejercicio. Tú puedes resolverlo de otra manera :)
 
 ```{r}
 
@@ -132,7 +132,6 @@ df_vict <- df |> select( all_of(vfilt))
 
 > Para responder, podemos simplemente sumar los factores de expansión de hogar `fac_hog` y no debemos filtrar ni agregar ya que queremos saber a nivel nacional esta estimación.
 
-
 ```{r}
 
 hog <- sum(df_vict$fac_hog, na.rm = T)
@@ -145,10 +144,10 @@ print(paste0('Se estiman ' , round(hog/1000000, 2) , ' millones de hogares en M�
 
 > ## Y bien, de esos Hogares ¿Cuántos se estima que fueron victimizados en 2024 en Mexico?
 
-> - Planteamiento: Necesito saber quiénes respondieron que `Sí` les ocurrió durante 2024 alguna conducta de las tarjetas A y B (delitos en hogares o personales) ya sea a alguien de su hogar o a quienes respondieron.
-> - Restricciones: En los delitos de Robo de vehículo y Robo parcial de vehículo debemos confirmar que estos pertenecían al hogar.
-> - Debido esa pregunta se divide en varias columnas en la base de datos como vimos en el filtro, crearé una variable dummy que guarde los resultados de cada pregunta. Solo necesito saber por ahora si respondió `Sí` a alguna.
-> - En mi caso, decidí crear una función que nos ayude a codificar las variables DRY (don't repeat yourself), esto con la finalidad de crear una nueva variable dummy y así estimar lo que necesitamos.
+> -   Planteamiento: Necesito saber quiénes respondieron que `Sí` les ocurrió durante 2024 alguna conducta de las tarjetas A y B (delitos en hogares o personales) ya sea a alguien de su hogar o a quienes respondieron.
+> -   Restricciones: En los delitos de Robo de vehículo y Robo parcial de vehículo debemos confirmar que estos pertenecían al hogar.
+> -   Debido esa pregunta se divide en varias columnas en la base de datos como vimos en el filtro, crearé una variable dummy que guarde los resultados de cada pregunta. Solo necesito saber por ahora si respondió `Sí` a alguna.
+> -   En mi caso, decidí crear una función que nos ayude a codificar las variables DRY (don't repeat yourself), esto con la finalidad de crear una nueva variable dummy y así estimar lo que necesitamos.
 
 > Crear la función para recodificar las respuestas de las tarjetas A y B
 
@@ -175,8 +174,7 @@ df_salida <- df_vict |>  # A la base de datos filtrada le aplico los procesamien
            vic_hog_est = vic_hog * fac_hog) # Podemos probar a estimar con los factores de expansión
 ```
 
-> Veamos qué pasa si sumamos los datos ya ponderados por su factor de expansión. 
-> Obtenemos la estimación puntual de Víctimas en Hogares
+> Veamos qué pasa si sumamos los datos ya ponderados por su factor de expansión. Obtenemos la estimación puntual de Víctimas en Hogares
 
 ```{r}
 hog_vic <- sum(df_salida$vic_hog_est)
@@ -193,9 +191,7 @@ dis_muest <- df_salida |> # A la tabla de la nueva variable le aplicamos las fun
                    weights= fac_hog) # Indicamos cuál es la variable que guarda los pesos o factores de expansión
 ```
 
-> Respondamos de una buena vez cuántos hogares fueron vćtimas de algún delito en 2024.
-> Recuerda leer muy bien el documento sobre el diseño muestral para entender mejor tus resultados.
-
+> Respondamos de una buena vez cuántos hogares fueron vćtimas de algún delito en 2024. Recuerda leer muy bien el documento sobre el diseño muestral para entender mejor tus resultados.
 
 ```{r}
 
@@ -211,7 +207,7 @@ hog_vict <- dis_muest |>    # A nuestro objeto de diseño muestral le aplicamos 
 
 hog_vic <- hog_vict$vic_hogar
 
-hog_vict |> kable() # Ponemos guapa a la tabla
+hog_vict |> kableExtra::kable() # Ponemos guapa a la tabla
 
 ```
 
@@ -237,10 +233,6 @@ print(paste0( 'Durante 2024 se estimaron ', round(hog/1000000, 2) ,  ' millones 
 
 ```
 
-
 ### En la imagen se pueden contrastar los resultados.
 
 ![Diapositiva de la presentación ejecutiva del INEGI](/imagenes-aux/prev-hog.png)
-
-
-
